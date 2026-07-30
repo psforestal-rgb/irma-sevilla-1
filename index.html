@@ -30,38 +30,24 @@
   </main>
   <script>
     (async function () {
-      const VERSION = "20260730-3";
-      const parts = Array.from({length: 12}, (_, i) =>
+      const VERSION = "20260730-4";
+      const PARTS = 13;
+      const parts = Array.from({length: PARTS}, (_, i) =>
         `app/part_${String(i).padStart(2, "0")}.b64?v=${VERSION}`
       );
 
       try {
         const encodedParts = [];
-        const lengths = [];
         for (const path of parts) {
           const response = await fetch(path, {cache: "no-store"});
           if (!response.ok) throw new Error(`No se pudo cargar ${path} (${response.status}).`);
           const text = (await response.text()).replace(/\s+/g, "");
           encodedParts.push(text);
-          lengths.push(text.length);
         }
 
         const fullBase64 = encodedParts.join("");
-        const invalidChars = fullBase64.replace(/[A-Za-z0-9+/=]/g, "");
-
-        if (invalidChars.length > 0) {
-          throw new Error(
-            "Caracteres inválidos en Base64: \"" + invalidChars.slice(0, 40) + "\"\n" +
-            "Longitud total: " + fullBase64.length + "\n" +
-            "Longitudes por parte: " + lengths.join(", ")
-          );
-        }
-
         if (fullBase64.length % 4 !== 0) {
-          throw new Error(
-            "Longitud Base64 no es múltiplo de 4: " + fullBase64.length + "\n" +
-            "Longitudes por parte: " + lengths.join(", ")
-          );
+          throw new Error("Longitud Base64 inválida (" + fullBase64.length + ").");
         }
 
         const binary = atob(fullBase64);
