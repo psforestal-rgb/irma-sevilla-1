@@ -15,7 +15,7 @@
     h1{margin:0 0 10px;font-size:20px;color:#14306b}
     p{margin:7px 0;line-height:1.45}
     .spinner{width:38px;height:38px;margin:18px auto;border:4px solid #d8deea;border-top-color:#14306b;border-radius:50%;animation:spin .8s linear infinite}
-    .error{display:none;text-align:left;background:#fff2f0;border:1px solid #e3aaa2;border-radius:10px;padding:12px;color:#7f160d;white-space:pre-wrap}
+    .error{display:none;text-align:left;background:#fff2f0;border:1px solid #e3aaa2;border-radius:10px;padding:12px;color:#7f160d;white-space:pre-wrap;font-size:13px}
     @keyframes spin{to{transform:rotate(360deg)}}
   </style>
 </head>
@@ -30,26 +30,38 @@
   </main>
   <script>
     (async function () {
-      // Cambia este número cada vez que actualices los archivos de la guía
-      const VERSION = "20260730-2";
-
+      const VERSION = "20260730-3";
       const parts = Array.from({length: 12}, (_, i) =>
         `app/part_${String(i).padStart(2, "0")}.b64?v=${VERSION}`
       );
 
       try {
-        // Cargar todos los trozos y concatenar el Base64 ANTES de decodificar
         const encodedParts = [];
+        const lengths = [];
         for (const path of parts) {
           const response = await fetch(path, {cache: "no-store"});
           if (!response.ok) throw new Error(`No se pudo cargar ${path} (${response.status}).`);
           const text = (await response.text()).replace(/\s+/g, "");
           encodedParts.push(text);
+          lengths.push(text.length);
         }
 
         const fullBase64 = encodedParts.join("");
+        const invalidChars = fullBase64.replace(/[A-Za-z0-9+/=]/g, "");
+
+        if (invalidChars.length > 0) {
+          throw new Error(
+            "Caracteres inválidos en Base64: \"" + invalidChars.slice(0, 40) + "\"\n" +
+            "Longitud total: " + fullBase64.length + "\n" +
+            "Longitudes por parte: " + lengths.join(", ")
+          );
+        }
+
         if (fullBase64.length % 4 !== 0) {
-          throw new Error("Longitud Base64 inválida (" + fullBase64.length + ").");
+          throw new Error(
+            "Longitud Base64 no es múltiplo de 4: " + fullBase64.length + "\n" +
+            "Longitudes por parte: " + lengths.join(", ")
+          );
         }
 
         const binary = atob(fullBase64);
@@ -70,7 +82,7 @@
         document.getElementById("loading").style.display = "none";
         const box = document.getElementById("error");
         box.style.display = "block";
-        box.textContent = "No fue posible cargar la guía. Recargue la página con conexión a internet.\n\nDetalle: " + error.message;
+        box.textContent = "No fue posible cargar la guía.\n\nDetalle: " + error.message;
       }
     })();
   </script>
