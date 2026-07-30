@@ -29,25 +29,24 @@
     (async function () {
       const parts = Array.from({length: 12}, (_, i) => `app/part_${String(i).padStart(2, "0")}.b64`);
       try {
-        const decodedParts = [];
-        let totalLength = 0;
-
+        // Cargar todos los trozos y concatenar el Base64 ANTES de decodificar
+        const encodedParts = [];
         for (const path of parts) {
           const response = await fetch(path, {cache: "no-store"});
           if (!response.ok) throw new Error(`No se pudo cargar ${path} (${response.status}).`);
-
-          const encodedPart = (await response.text()).replace(/\s+/g, "");
-          const binaryPart = atob(encodedPart);
-          decodedParts.push(binaryPart);
-          totalLength += binaryPart.length;
+          const text = (await response.text()).replace(/\s+/g, "");
+          encodedParts.push(text);
         }
 
-        const bytes = new Uint8Array(totalLength);
-        let offset = 0;
-        for (const binaryPart of decodedParts) {
-          for (let i = 0; i < binaryPart.length; i++) {
-            bytes[offset++] = binaryPart.charCodeAt(i);
-          }
+        const fullBase64 = encodedParts.join("");
+        if (fullBase64.length % 4 !== 0) {
+          throw new Error("Longitud Base64 inválida (" + fullBase64.length + ").");
+        }
+
+        const binary = atob(fullBase64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
         }
 
         const html = new TextDecoder("utf-8").decode(bytes);
