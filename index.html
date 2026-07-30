@@ -29,16 +29,32 @@
     (async function () {
       const parts = Array.from({length: 12}, (_, i) => `app/part_${String(i).padStart(2, "0")}.b64`);
       try {
-        let encoded = "";
+        const decodedParts = [];
+        let totalLength = 0;
+
         for (const path of parts) {
           const response = await fetch(path, {cache: "no-store"});
           if (!response.ok) throw new Error(`No se pudo cargar ${path} (${response.status}).`);
-          encoded += (await response.text()).replace(/\s+/g, "");
+
+          const encodedPart = (await response.text()).replace(/\s+/g, "");
+          const binaryPart = atob(encodedPart);
+          decodedParts.push(binaryPart);
+          totalLength += binaryPart.length;
         }
-        const binary = atob(encoded);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+        const bytes = new Uint8Array(totalLength);
+        let offset = 0;
+        for (const binaryPart of decodedParts) {
+          for (let i = 0; i < binaryPart.length; i++) {
+            bytes[offset++] = binaryPart.charCodeAt(i);
+          }
+        }
+
         const html = new TextDecoder("utf-8").decode(bytes);
+        if (!/^\s*<!doctype html>/i.test(html)) {
+          throw new Error("El contenido reconstruido no es un documento HTML válido.");
+        }
+
         document.open();
         document.write(html);
         document.close();
